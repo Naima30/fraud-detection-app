@@ -233,7 +233,13 @@ def modeling_page(df):
         X_train, X_test, y_train, y_test = train_test_split(
             X, y, test_size=0.2, random_state=42
         )
+# Ensure numeric and clean data before SMOTE
+        X_train = X_train.select_dtypes(include=[np.number])
+        X_test = X_test.select_dtypes(include=[np.number])
 
+# Fill missing values (SMOTE cannot handle NaNs)
+        X_train = X_train.fillna(X_train.median())
+        X_test = X_test.fillna(X_test.median())
         # ================= SMOTE =================
         smote = SMOTE(random_state=42)
         X_train, y_train = smote.fit_resample(X_train, y_train)
@@ -369,13 +375,33 @@ def risk_predictor_page(df):
 # About Page
 # ======================================================
 def about_page():
-    st.subheader("About")
+    st.subheader("About This Project")
+
     st.write("""
-Fraud Detection Dashboard built using:
-- Machine Learning
+This **Fraud Detection Dashboard** is an interactive machine learning application 
+designed to analyze financial transactions and identify potentially fraudulent activity.
+
+### 🔍 What this system does
+- Performs **exploratory data analysis (EDA)** to understand transaction patterns
+- Handles **imbalanced datasets** using SMOTE
+- Trains **machine learning models** such as Logistic Regression and Random Forest
+- Evaluates models using **Precision, Recall, F1-score, ROC-AUC, and PR curves**
+- Provides **real-time fraud risk prediction** through an interactive interface
+- Uses **LIME explainability** to show why a transaction is flagged
+
+### 📊 Technologies Used
+- Python
 - Streamlit
-- Data Visualization
-- Risk Scoring
+- Scikit-learn
+- Pandas & NumPy
+- Matplotlib & Seaborn
+- LIME (Explainable AI)
+
+### 🎯 Purpose
+The goal of this system is to assist analysts or risk officers in:
+- Detecting fraudulent transactions earlier
+- Understanding key fraud drivers
+- Making informed decisions using interpretable machine learning
 """)
 
 # ======================================================
