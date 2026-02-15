@@ -119,51 +119,61 @@ def overview_page(df):
 # EDA Page
 # ======================================================
 def eda_page(df):
+
     st.subheader("Exploratory Data Analysis")
 
+    # Detect column types
     numeric_cols = df.select_dtypes(include=np.number).columns.tolist()
-    cat_cols = df.select_dtypes(include="object").columns.tolist()
+    cat_cols = df.select_dtypes(include=['object','category']).columns.tolist()
 
+    # ----------------------------
     # Distribution + Boxplot
+    # ----------------------------
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.subheader("Distribution & Outliers")
 
-    if numeric_cols:
+    if not numeric_cols:
+        st.warning("No numeric columns available.")
+    else:
         col = st.selectbox("Select Numeric Feature", numeric_cols)
+
         fig, axes = plt.subplots(1,2, figsize=(12,4))
-        sns.histplot(df[col], kde=True, ax=axes[0])
-        sns.boxplot(y=df[col], ax=axes[1])
+        sns.histplot(df[col].dropna(), kde=True, ax=axes[0])
+        sns.boxplot(y=df[col].dropna(), ax=axes[1])
+
+        axes[0].set_title(f"Distribution of {col}")
+        axes[1].set_title(f"Outliers in {col}")
+
         st.pyplot(fig)
 
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # Scatter
+    # ----------------------------
+    # Scatter Plot
+    # ----------------------------
     if len(numeric_cols) >= 2:
         st.markdown('<div class="card">', unsafe_allow_html=True)
         st.subheader("Scatter Plot")
 
-        x = st.selectbox("X axis", numeric_cols, key="x")
-        y = st.selectbox("Y axis", numeric_cols, key="y")
+        x = st.selectbox("X axis", numeric_cols, key="x_scatter")
+        y = st.selectbox("Y axis", numeric_cols, key="y_scatter")
 
         fig, ax = plt.subplots()
         sns.scatterplot(x=df[x], y=df[y], ax=ax)
-        st.pyplot(fig)
 
+        ax.set_title(f"{y} vs {x}")
+
+        st.pyplot(fig)
         st.markdown('</div>', unsafe_allow_html=True)
 
-def eda_page(df):
-
-    st.subheader("Exploratory Data Analysis")
-
-    numeric_cols = df.select_dtypes(include=np.number).columns.tolist()
-    cat_cols = df.select_dtypes(include=['object','category']).columns.tolist()
-
+    # ----------------------------
     # Bar Chart
+    # ----------------------------
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.subheader("Bar Chart")
 
-    if len(cat_cols) == 0:
-        st.warning("No categorical columns available for bar chart.")
+    if not cat_cols:
+        st.warning("No categorical columns available.")
     else:
         cat = st.selectbox("Select Categorical Feature", cat_cols)
 
@@ -172,26 +182,41 @@ def eda_page(df):
         fig, ax = plt.subplots(figsize=(8,4))
         counts.plot(kind="bar", ax=ax)
 
-        ax.set_title(f"Top categories in {cat}")
+        ax.set_title(f"Top Categories in {cat}")
+        ax.set_ylabel("Count")
+
         st.pyplot(fig)
 
     st.markdown('</div>', unsafe_allow_html=True)
 
-
+    # ----------------------------
     # Pie Chart
+    # ----------------------------
     if cat_cols:
         st.markdown('<div class="card">', unsafe_allow_html=True)
         st.subheader("Pie Chart")
 
-        cat2 = st.selectbox("Pie Feature", cat_cols, key="pie")
+        cat2 = st.selectbox("Pie Feature", cat_cols, key="pie_feature")
+
         fig, ax = plt.subplots()
         df[cat2].value_counts().head(6).plot.pie(autopct="%1.1f%%", ax=ax)
         ax.set_ylabel("")
+
         st.pyplot(fig)
-
         st.markdown('</div>', unsafe_allow_html=True)
-        
 
+    # ----------------------------
+    # Heatmap
+    # ----------------------------
+    if len(numeric_cols) >= 2:
+        st.markdown('<div class="card">', unsafe_allow_html=True)
+        st.subheader("Correlation Heatmap")
+
+        fig, ax = plt.subplots(figsize=(9,6))
+        sns.heatmap(df[numeric_cols].corr(), annot=True, cmap="coolwarm", ax=ax)
+
+        st.pyplot(fig)
+        st.markdown('</div>', unsafe_allow_html=True)
 # ======================================================
 # Modeling Page
 # ======================================================
