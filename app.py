@@ -248,33 +248,34 @@ def modeling_page(df):
             X, y, test_size=0.2, random_state=42
         )
         st.write("Train/Test split done")
-
-# ================= SMOTE =================
-        st.write("Applying SMOTE...")
-
-# Encode categorical columns first
+        # Encode categorical columns
         X_train = pd.get_dummies(X_train, drop_first=True)
         X_test = pd.get_dummies(X_test, drop_first=True)
 
-# Align columns
+# Align columns (very important)
         X_test = X_test.reindex(columns=X_train.columns, fill_value=0)
+
+# Ensure numeric types only
+        X_train = X_train.apply(pd.to_numeric, errors="coerce")
+        X_test = X_test.apply(pd.to_numeric, errors="coerce")
 
 # Fill missing values
         X_train = X_train.fillna(0)
         X_test = X_test.fillna(0)
 
-# Show class distribution before SMOTE
+        st.write("Training feature shape:", X_train.shape)
+
+# ================= SMOTE =================
+        st.write("Applying SMOTE...")
         st.write("Class distribution before SMOTE:")
         st.write(y_train.value_counts())
 
-# Count minority samples
         minority_count = y_train.value_counts().min()
 
         if minority_count < 2:
             st.error("Not enough fraud samples to apply SMOTE.")
             return
 
-# Adjust neighbors safely
         k_neighbors = min(5, minority_count - 1)
 
         smote = SMOTE(random_state=42, k_neighbors=k_neighbors)
