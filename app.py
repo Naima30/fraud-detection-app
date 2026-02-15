@@ -363,11 +363,20 @@ def risk_predictor_page(df):
         if c != "Is_Fraud" and pd.api.types.is_numeric_dtype(df[c])
     ]
 
-    inputs = {}
-    cols = st.columns(2)
+    inputs[col] = cols[i % 2].number_input(
+        col,
+        min_value=0.0,
+        max_value=100.0,
+        value=float(df[col].median())
+    )
 
     for i, col in enumerate(numeric_features):
-        inputs[col] = cols[i % 2].number_input(col, float(df[col].median()))
+        if col == "Account_Age_Days":
+            inputs[col] = cols[i % 2].number_input(col, min_value=0.0, max_value=5000.0, value=365.0)
+        elif col == "Customer_Age":
+            inputs[col] = cols[i % 2].number_input(col, min_value=18.0, max_value=100.0, value=30.0)
+        else:
+            inputs[col] = cols[i % 2].number_input(col, value=float(df[col].median()))
 
     if st.button("Analyze Fraud Risk"):
         Xnew = pd.DataFrame([inputs])
