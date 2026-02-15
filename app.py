@@ -288,9 +288,6 @@ def modeling_page(df):
         st.write("Class distribution after SMOTE:")
         st.write(y_train.value_counts())
 
-# Show distribution after SMOTE
-        st.write("Class distribution after SMOTE:")
-        st.write(y_train.value_counts())
         models = {
             "Logistic Regression": LogisticRegression(max_iter=2000),
             "Random Forest": RandomForestClassifier(n_estimators=200)
