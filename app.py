@@ -248,22 +248,21 @@ def modeling_page(df):
             X, y, test_size=0.2, random_state=42
         )
         st.write("Train/Test split done")
-        # Encode categorical columns
+# Encode categorical columns
         X_train = pd.get_dummies(X_train, drop_first=True)
         X_test = pd.get_dummies(X_test, drop_first=True)
 
-# Align columns (very important)
+# Align columns
         X_test = X_test.reindex(columns=X_train.columns, fill_value=0)
 
-# Ensure numeric types only
-        X_train = X_train.apply(pd.to_numeric, errors="coerce")
-        X_test = X_test.apply(pd.to_numeric, errors="coerce")
+# Convert bool → numeric
+        X_train = X_train.astype(float)
+        X_test = X_test.astype(float)
 
 # Fill missing values
         X_train = X_train.fillna(0)
         X_test = X_test.fillna(0)
 
-        st.write("Training feature shape:", X_train.shape)
         st.write("Column types before SMOTE:")
         st.write(X_train.dtypes.value_counts())
 
