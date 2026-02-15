@@ -229,6 +229,17 @@ def modeling_page(df):
     if st.button("Train Models"):
 
         X, y = prepare_features(df[features + ["Is_Fraud"]])
+        # Ensure all features are numeric
+        X = pd.get_dummies(X, drop_first=True)
+
+# Convert everything to numeric safely
+        X = X.apply(pd.to_numeric, errors="coerce")
+
+# Fill missing values
+        X = X.fillna(X.median(numeric_only=True))
+
+# Replace any remaining NaN with 0 (safety)
+        X = X.fillna(0)
 
         X_train, X_test, y_train, y_test = train_test_split(
             X, y, test_size=0.2, random_state=42
@@ -240,6 +251,9 @@ def modeling_page(df):
 # Fill missing values (SMOTE cannot handle NaNs)
         X_train = X_train.fillna(X_train.median())
         X_test = X_test.fillna(X_test.median())
+        if y_train.value_counts().min() < 2:
+            st.error("Not enough fraud samples to apply SMOTE. Please select more features or use full dataset.")
+        return
         # ================= SMOTE =================
         smote = SMOTE(random_state=42)
         X_train, y_train = smote.fit_resample(X_train, y_train)
