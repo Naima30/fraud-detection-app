@@ -365,13 +365,6 @@ def risk_predictor_page(df):
     inputs = {}
     cols = st.columns(2)
 
-    inputs[col] = cols[i % 2].number_input(
-        col,
-        min_value=0.0,
-        max_value=100.0,
-        value=float(df[col].median())
-    )
-
     for i, col in enumerate(numeric_features):
         if col == "Account_Age_Days":
             inputs[col] = cols[i % 2].number_input(col, min_value=0.0, max_value=5000.0, value=365.0)
