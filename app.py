@@ -362,6 +362,8 @@ def risk_predictor_page(df):
         c for c in df.columns
         if c != "Is_Fraud" and pd.api.types.is_numeric_dtype(df[c])
     ]
+    inputs = {}
+    cols = st.columns(2)
 
     inputs[col] = cols[i % 2].number_input(
         col,
