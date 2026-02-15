@@ -264,6 +264,8 @@ def modeling_page(df):
         X_test = X_test.fillna(0)
 
         st.write("Training feature shape:", X_train.shape)
+        st.write("Column types before SMOTE:")
+        st.write(X_train.dtypes.value_counts())
 
 # ================= SMOTE =================
         st.write("Applying SMOTE...")
