@@ -151,52 +151,42 @@ def eda_page(df):
 
         st.markdown('</div>', unsafe_allow_html=True)
 
-# Bar Chart
-st.markdown('<div class="card">', unsafe_allow_html=True)
-st.subheader("Bar Chart")
+def eda_page(df):
 
-# Detect categorical columns safely
-cat_cols = df.select_dtypes(include=['object','category']).columns.tolist()
+    st.subheader("Exploratory Data Analysis")
 
-if len(cat_cols) == 0:
-    st.warning("No categorical columns available for bar chart.")
-else:
-    cat = st.selectbox("Select Categorical Feature", cat_cols)
+    numeric_cols = df.select_dtypes(include=np.number).columns.tolist()
+    cat_cols = df.select_dtypes(include=['object','category']).columns.tolist()
 
-    counts = df[cat].value_counts().head(10)
-
-    fig, ax = plt.subplots(figsize=(8,4))
-    counts.plot(kind="bar", ax=ax)
-
-    ax.set_title(f"Top categories in {cat}")
-    ax.set_ylabel("Count")
-    ax.set_xlabel(cat)
-
-    st.pyplot(fig)
-
-st.markdown('</div>', unsafe_allow_html=True)
-
-
-# Pie Chart  ← FIXED (no extra indentation)
-if cat_cols:
+    # Bar Chart
     st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.subheader("Pie Chart")
+    st.subheader("Bar Chart")
 
-    cat2 = st.selectbox("Pie Feature", cat_cols, key="pie")
-    fig, ax = plt.subplots()
-    df[cat2].value_counts().head(6).plot.pie(autopct="%1.1f%%", ax=ax)
-    ax.set_ylabel("")
-    st.pyplot(fig)
+    if len(cat_cols) == 0:
+        st.warning("No categorical columns available for bar chart.")
+    else:
+        cat = st.selectbox("Select Categorical Feature", cat_cols)
+
+        counts = df[cat].value_counts().head(10)
+
+        fig, ax = plt.subplots(figsize=(8,4))
+        counts.plot(kind="bar", ax=ax)
+
+        ax.set_title(f"Top categories in {cat}")
+        st.pyplot(fig)
 
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # Heatmap
-    if len(numeric_cols) >= 2:
-        st.markdown('<div class="card">', unsafe_allow_html=True)
-        st.subheader("Correlation Heatmap")
 
-        fig, ax = plt.subplots(figsize=(9,6))
-        sns.heatmap(df[numeric_cols].corr(), annot=True, cmap="Blues", ax=ax)
+    # Pie Chart
+    if cat_cols:
+        st.markdown('<div class="card">', unsafe_allow_html=True)
+        st.subheader("Pie Chart")
+
+        cat2 = st.selectbox("Pie Feature", cat_cols, key="pie")
+        fig, ax = plt.subplots()
+        df[cat2].value_counts().head(6).plot.pie(autopct="%1.1f%%", ax=ax)
+        ax.set_ylabel("")
         st.pyplot(fig)
 
         st.markdown('</div>', unsafe_allow_html=True)
