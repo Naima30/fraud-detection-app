@@ -191,6 +191,7 @@ def eda_page(df):
 # Modeling Page
 # ======================================================
 def prepare_features(df, target="Is_Fraud"):
+    df = df.drop(columns=["Transaction_ID"], errors="ignore")
     df = df.copy()
 
     drop_cols = []
@@ -271,7 +272,7 @@ def modeling_page(df):
 
         if minority_count < 2:
             st.error("Not enough fraud samples to apply SMOTE.")
-        return
+            return
 
 # Adjust neighbors safely
         k_neighbors = min(5, minority_count - 1)
