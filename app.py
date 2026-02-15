@@ -1,414 +1,406 @@
+# ======================================================
+# Fraud Detection Dashboard – Final Presentation Version
+# ======================================================
+
 import streamlit as st
 import pandas as pd
 import numpy as np
-import plotly.express as px
 import matplotlib.pyplot as plt
 import seaborn as sns
+import plotly.graph_objects as go
+from pathlib import Path
 
-from sklearn.model_selection import train_test_split, GridSearchCV
-from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import (
-    accuracy_score,
-    roc_auc_score,
-    precision_recall_curve,
-    confusion_matrix,
-    roc_curve,
-    auc
+    accuracy_score, precision_score, recall_score,
+    f1_score, confusion_matrix, classification_report
 )
 
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.linear_model import LogisticRegression
-from xgboost import XGBClassifier
-from imblearn.over_sampling import SMOTE
+sns.set_style("whitegrid")
 
+DEFAULT_DATA_PATH = "finguard_transaction_data_P2.csv"
 
-# ---------------------------------------------------
-# PAGE CONFIG
-# ---------------------------------------------------
-st.set_page_config(page_title="Fraud Risk Intelligence System", layout="wide")
+# ======================================================
+# UI Styling
+# ======================================================
+def apply_css():
+    css = """
+    <style>
 
-st.title("💳 Fraud Risk Intelligence Dashboard")
+    .stApp {
+        background-color: #0e1117;
+        color: #ffffff;
+    }
 
+    /* Hero Banner */
+    .hero {
+        background: linear-gradient(135deg, #1c1f26, #243b55);
+        padding: 40px;
+        border-radius: 12px;
+        margin-bottom: 25px;
+        text-align: center;
+        color: white;
+    }
 
-# ---------------------------------------------------
-# SESSION STATE INIT
-# ---------------------------------------------------
-if "df" not in st.session_state:
-    st.session_state.df = None
+    .hero h1 {
+        font-size: 38px;
+        font-weight: 700;
+        margin-bottom: 10px;
+        color: white !important;
+    }
 
-if "model" not in st.session_state:
-    st.session_state.model = None
+    .hero p {
+        font-size: 16px;
+        color: #cfd8dc !important;
+    }
 
-if "X_columns" not in st.session_state:
-    st.session_state.X_columns = None
+    /* Cards */
+    .card {
+        background: #1c1f26;
+        padding: 18px;
+        border-radius: 12px;
+        margin-bottom: 18px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    }
 
+    /* Sidebar */
+    section[data-testid="stSidebar"] {
+        background-color: #1c1f26;
+    }
 
-# ---------------------------------------------------
-# SIDEBAR NAVIGATION
-# ---------------------------------------------------
-menu = [
-    "1. Load Dataset",
-    "2. Data Exploration",
-    "3. Data Cleaning",
-    "4. Feature Engineering",
-    "5. Model Training",
-    "6. Model Evaluation",
-    "7. Risk Prediction",
-    "8. Business Dashboard"
-]
+    /* Tables */
+    .stDataFrame {
+        background-color: #1c1f26;
+        color: white;
+    }
 
-choice = st.sidebar.radio("Navigation", menu)
+    </style>
+    """
+    st.markdown(css, unsafe_allow_html=True)
 
-
-# ---------------------------------------------------
-# MODULE 1: LOAD DATA
-# ---------------------------------------------------
-if choice == "1. Load Dataset":
-
-    st.header("Dataset Loader")
-
-    uploaded_file = st.file_uploader("Upload CSV", type=["csv"])
-
+# ======================================================
+# Load Dataset
+# ======================================================
+@st.cache_data
+def load_dataset(uploaded_file):
     if uploaded_file:
-        df = pd.read_csv(uploaded_file)
-        st.session_state.df = df
-        st.success("Dataset Loaded Successfully")
+        return pd.read_csv(uploaded_file)
 
-        st.subheader("Preview")
-        st.dataframe(df.head())
+    p = Path(DEFAULT_DATA_PATH)
+    if p.exists():
+        return pd.read_csv(p)
 
-        st.subheader("Shape")
-        st.write(df.shape)
+    return None
 
-        st.subheader("Missing Values")
-        st.write(df.isnull().sum())
+def auto_encode_features(X):
+    return pd.get_dummies(X, drop_first=True)
 
+# ======================================================
+# Overview Page
+# ======================================================
+def overview_page(df):
+    st.markdown('<div class="card">', unsafe_allow_html=True)
 
-# ---------------------------------------------------
-# MODULE 2: DATA EXPLORATION
-# ---------------------------------------------------
-elif choice == "2. Data Exploration":
+    st.subheader("Dataset Overview")
+    st.dataframe(df.head(), use_container_width=True)
 
-    if st.session_state.df is None:
-        st.warning("Upload dataset first")
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Rows", df.shape[0])
+    c2.metric("Columns", df.shape[1])
+
+    if "Is_Fraud" in df.columns:
+        c3.metric("Fraud Cases", int(df["Is_Fraud"].sum()))
+
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# ======================================================
+# EDA Page
+# ======================================================
+def eda_page(df):
+
+    st.subheader("Exploratory Data Analysis")
+
+    # Detect column types
+    numeric_cols = df.select_dtypes(include=np.number).columns.tolist()
+    cat_cols = df.select_dtypes(include=['object','category']).columns.tolist()
+
+    # ----------------------------
+    # Distribution + Boxplot
+    # ----------------------------
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.subheader("Distribution & Outliers")
+
+    if not numeric_cols:
+        st.warning("No numeric columns available.")
     else:
-        df = st.session_state.df
+        col = st.selectbox("Select Numeric Feature", numeric_cols)
 
-        st.header("Exploratory Data Analysis")
+        fig, axes = plt.subplots(1,2, figsize=(12,4))
+        sns.histplot(df[col].dropna(), kde=True, ax=axes[0])
+        sns.boxplot(y=df[col].dropna(), ax=axes[1])
 
-        col1, col2 = st.columns(2)
+        axes[0].set_title(f"Distribution of {col}")
+        axes[1].set_title(f"Outliers in {col}")
 
-        with col1:
-            st.subheader("Fraud Distribution")
-            st.bar_chart(df["Is_Fraud"].value_counts())
+        st.pyplot(fig)
 
-        with col2:
-            st.subheader("Transaction Amount Distribution")
-            fig = px.histogram(df, x="Transaction_Amount", nbins=50)
-            st.plotly_chart(fig)
+    st.markdown('</div>', unsafe_allow_html=True)
 
+    # ----------------------------
+    # Scatter Plot
+    # ----------------------------
+    if len(numeric_cols) >= 2:
+        st.markdown('<div class="card">', unsafe_allow_html=True)
+        st.subheader("Scatter Plot")
+
+        x = st.selectbox("X axis", numeric_cols, key="x_scatter")
+        y = st.selectbox("Y axis", numeric_cols, key="y_scatter")
+
+        fig, ax = plt.subplots()
+        sns.scatterplot(x=df[x], y=df[y], ax=ax)
+
+        ax.set_title(f"{y} vs {x}")
+
+        st.pyplot(fig)
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    # ----------------------------
+    # Bar Chart
+    # ----------------------------
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.subheader("Bar Chart")
+
+    if not cat_cols:
+        st.warning("No categorical columns available.")
+    else:
+        cat = st.selectbox("Select Categorical Feature", cat_cols)
+
+        counts = df[cat].value_counts().head(10)
+
+        fig, ax = plt.subplots(figsize=(8,4))
+        counts.plot(kind="bar", ax=ax)
+
+        ax.set_title(f"Top Categories in {cat}")
+        ax.set_ylabel("Count")
+
+        st.pyplot(fig)
+
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    # ----------------------------
+    # Pie Chart
+    # ----------------------------
+    if cat_cols:
+        st.markdown('<div class="card">', unsafe_allow_html=True)
+        st.subheader("Pie Chart")
+
+        cat2 = st.selectbox("Pie Feature", cat_cols, key="pie_feature")
+
+        fig, ax = plt.subplots()
+        df[cat2].value_counts().head(6).plot.pie(autopct="%1.1f%%", ax=ax)
+        ax.set_ylabel("")
+
+        st.pyplot(fig)
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    # ----------------------------
+    # Heatmap
+    # ----------------------------
+    if len(numeric_cols) >= 2:
+        st.markdown('<div class="card">', unsafe_allow_html=True)
         st.subheader("Correlation Heatmap")
 
-        numeric_df = df.select_dtypes(include=np.number)
-        corr = numeric_df.corr()
+        fig, ax = plt.subplots(figsize=(9,6))
+        sns.heatmap(df[numeric_cols].corr(), annot=True, cmap="coolwarm", ax=ax)
 
-        fig, ax = plt.subplots(figsize=(10, 6))
-        sns.heatmap(corr, annot=False, cmap="coolwarm", ax=ax)
         st.pyplot(fig)
+        st.markdown('</div>', unsafe_allow_html=True)
+# ======================================================
+# Modeling Page
+# ======================================================
+def prepare_features(df, target="Is_Fraud"):
+    df = df.copy()
 
-        st.subheader("Fraud vs Transaction Amount")
-        fig2 = px.box(df, x="Is_Fraud", y="Transaction_Amount")
-        st.plotly_chart(fig2)
+    # Drop ID-like columns automatically
+    drop_cols = []
+    for col in df.columns:
+        if df[col].nunique() > 1000:
+            drop_cols.append(col)
 
+    df = df.drop(columns=drop_cols)
 
-# ---------------------------------------------------
-# MODULE 3: DATA CLEANING
-# ---------------------------------------------------
-elif choice == "3. Data Cleaning":
+    # Separate X and y
+    X = df.drop(target, axis=1)
+    y = df[target]
 
-    if st.session_state.df is None:
-        st.warning("Upload dataset first")
-    else:
-        df = st.session_state.df.copy()
-        st.header("Data Cleaning")
+    # Encode categorical safely
+    X = pd.get_dummies(X, drop_first=True)
 
-        st.subheader("Missing Values")
-        st.write(df.isnull().sum())
+    # Limit features to avoid memory explosion
+    if X.shape[1] > 200:
+        X = X.iloc[:, :200]
 
-        method = st.selectbox("Imputation Method", ["None", "Fill Median"])
+    return X, y
 
-        if method == "Fill Median":
-            for col in df.select_dtypes(include=np.number).columns:
-                df[col].fillna(df[col].median(), inplace=True)
-            st.success("Missing values filled")
+def modeling_page(df):
+    st.subheader("Model Training & Comparison")
 
-        st.subheader("Outlier Handling")
+    if "Is_Fraud" not in df.columns:
+        st.error("Dataset must contain 'Is_Fraud'")
+        return
 
-        col_select = st.selectbox("Select Column", df.select_dtypes(include=np.number).columns)
+    features = st.multiselect(
+        "Select Features",
+        [c for c in df.columns if c != "Is_Fraud"],
+        default=[c for c in df.columns if c != "Is_Fraud"][:5]
+    )
 
-        Q1 = df[col_select].quantile(0.25)
-        Q3 = df[col_select].quantile(0.75)
-        IQR = Q3 - Q1
+    if not features:
+        return
 
-        lower = Q1 - 1.5 * IQR
-        upper = Q3 + 1.5 * IQR
+    if st.button("Train Models"):
 
-        st.write("Outliers:", df[(df[col_select] < lower) | (df[col_select] > upper)].shape[0])
-
-        if st.button("Cap Outliers"):
-            df[col_select] = np.clip(df[col_select], lower, upper)
-            st.success("Outliers capped")
-
-        if st.button("Save Cleaned Data"):
-            st.session_state.df = df
-            st.success("Saved")
-
-
-# ---------------------------------------------------
-# MODULE 4: FEATURE ENGINEERING
-# ---------------------------------------------------
-elif choice == "4. Feature Engineering":
-
-    if st.session_state.df is None:
-        st.warning("Upload dataset first")
-    else:
-        df = st.session_state.df.copy()
-        st.header("Feature Engineering")
-
-        if st.checkbox("Create Balance Delta"):
-            if "Account_Balance_Pre" in df.columns and "Account_Balance_Post" in df.columns:
-                df["Balance_Delta"] = df["Account_Balance_Pre"] - df["Account_Balance_Post"]
-                st.success("Feature Created")
-
-        if st.checkbox("Create Spend Ratio"):
-            if "Average_Monthly_Spend" in df.columns:
-                df["Spend_Ratio"] = df["Transaction_Amount"] / (df["Average_Monthly_Spend"] + 1)
-
-        st.subheader("Encoding Categorical Features")
-
-        if st.button("Encode Categories"):
-            for col in df.select_dtypes(include="object").columns:
-                df[col] = LabelEncoder().fit_transform(df[col])
-            st.session_state.df = df
-            st.success("Encoding Done")
-
-        st.dataframe(df.head())
-
-
-# ---------------------------------------------------
-# MODULE 5: MODEL TRAINING
-# ---------------------------------------------------
-elif choice == "5. Model Training":
-
-    if st.session_state.df is None:
-        st.warning("Upload dataset first")
-    else:
-        df = st.session_state.df.copy()
-
-        st.header("Model Training")
-
-        target = "Is_Fraud"
-
-        X = df.drop(columns=[target])
-        y = df[target]
-
-        scaler = StandardScaler()
-        X_scaled = scaler.fit_transform(X)
-
-        smote = SMOTE()
-        X_res, y_res = smote.fit_resample(X_scaled, y)
+        X, y = prepare_features(df[features + ["Is_Fraud"]])
 
         X_train, X_test, y_train, y_test = train_test_split(
-            X_res, y_res, test_size=0.2, random_state=42
+            X, y, test_size=0.2, random_state=42
         )
 
-        algo = st.selectbox(
-            "Choose Algorithm",
-            ["Random Forest", "Logistic Regression", "XGBoost"]
-        )
-
-        if st.button("Train Model"):
-
-            if algo == "Random Forest":
-                model = RandomForestClassifier(n_estimators=200)
-
-            elif algo == "Logistic Regression":
-                model = LogisticRegression(max_iter=500)
-
-            else:
-                model = XGBClassifier(eval_metric="logloss")
-
-            model.fit(X_train, y_train)
-
-            st.session_state.model = model
-            st.session_state.X_columns = X.columns
-            st.session_state.X_test = X_test
-            st.session_state.y_test = y_test
-
-            st.success("Model Trained Successfully")
-
-
-# ---------------------------------------------------
-# MODULE 6: MODEL EVALUATION
-# ---------------------------------------------------
-elif choice == "6. Model Evaluation":
-
-    if st.session_state.model is None:
-        st.warning("Train model first")
-    else:
-        model = st.session_state.model
-        X_test = st.session_state.X_test
-        y_test = st.session_state.y_test
-
-        st.header("Model Evaluation")
-
-        y_probs = model.predict_proba(X_test)[:, 1]
-        y_pred = (y_probs > 0.5).astype(int)
-
-        acc = accuracy_score(y_test, y_pred)
-        roc_auc = roc_auc_score(y_test, y_probs)
-
-        st.metric("Accuracy", f"{acc:.3f}")
-        st.metric("ROC-AUC", f"{roc_auc:.3f}")
-
-        st.subheader("Confusion Matrix")
-
-        cm = confusion_matrix(y_test, y_pred)
-        fig, ax = plt.subplots()
-        sns.heatmap(cm, annot=True, fmt="d", ax=ax)
-        st.pyplot(fig)
-
-        st.subheader("ROC Curve")
-
-        fpr, tpr, _ = roc_curve(y_test, y_probs)
-        fig2 = px.line(x=fpr, y=tpr)
-        st.plotly_chart(fig2)
-
-
-# ---------------------------------------------------
-# MODULE 7: RISK PREDICTION (ADVANCED UI)
-# ---------------------------------------------------
-elif choice == "7. Risk Prediction":
-
-    if st.session_state.model is None:
-        st.warning("Train model first")
-    else:
-        st.header("🔎 Live Fraud Risk Analyzer")
-
-        model = st.session_state.model
-        columns = st.session_state.X_columns
-
-        st.subheader("Enter Transaction Details")
-
-        col1, col2 = st.columns(2)
-
-        user_input = {}
-
-        # Numeric Inputs
-        numeric_fields = [
-            "Transaction_Amount",
-            "Account_Balance_Pre",
-            "Account_Balance_Post",
-            "Login_Attempts",
-            "Customer_Age",
-            "Average_Monthly_Spend"
-        ]
-
-        # Categorical Inputs
-        categorical_fields = {
-            "Is_International": [0, 1],
-            "Transaction_Type": ["UPI", "Debit Card", "Credit Card", "Net Banking"],
-            "Device_Type": ["Mobile-Android", "Mobile-iOS", "Desktop", "Tablet"],
-            "Merchant_Category": ["Travel", "Dining", "Electronics", "Gaming"],
+        models = {
+            "Logistic Regression": LogisticRegression(max_iter=2000),
+            "Random Forest": RandomForestClassifier(n_estimators=200)
         }
 
-        # Numeric UI
-        with col1:
-            for field in numeric_fields:
-                if field in columns:
-                    user_input[field] = st.number_input(field, value=0.0)
+        results = []
 
-        # Categorical UI
-        with col2:
-            for field, options in categorical_fields.items():
-                if field in columns:
-                    user_input[field] = st.selectbox(field, options)
+        for name, model in models.items():
+            model.fit(X_train, y_train)
+            preds = model.predict(X_test)
 
-        # Prediction
-        if st.button("Predict Risk Score"):
+            acc = accuracy_score(y_test, preds)
+            prec = precision_score(y_test, preds)
+            rec = recall_score(y_test, preds)
+            f1 = f1_score(y_test, preds)
 
-            input_df = pd.DataFrame([user_input])
+            results.append([name, acc, prec, rec, f1])
 
-            # Handle encoding like training stage
-            input_df = pd.get_dummies(input_df)
+            st.subheader(name)
+            fig, ax = plt.subplots()
+            sns.heatmap(confusion_matrix(y_test, preds), annot=True, fmt="d", ax=ax)
+            st.pyplot(fig)
 
-            # Align columns
-            input_df = input_df.reindex(columns=columns, fill_value=0)
+            st.text(classification_report(y_test, preds))
 
-            prob = model.predict_proba(input_df)[0][1]
+            st.session_state[f"model_{name}"] = model
 
-            st.subheader("Risk Assessment")
+        st.dataframe(pd.DataFrame(results,
+                     columns=["Model","Accuracy","Precision","Recall","F1"]))
 
-            colA, colB = st.columns(2)
+# ======================================================
+# Risk Predictor Page
+# ======================================================
+def risk_predictor_page(df):
+    st.subheader("Fraud Risk Predictor")
 
-            with colA:
-                st.metric("Fraud Probability", f"{prob:.2f}")
+    available_models = {
+        k.replace("model_",""): st.session_state[k]
+        for k in st.session_state if k.startswith("model_")
+    }
 
-            with colB:
-                if prob > 0.7:
-                    st.error("🔴 High Risk Transaction")
-                elif prob > 0.4:
-                    st.warning("🟡 Medium Risk Transaction")
-                else:
-                    st.success("🟢 Low Risk Transaction")
+    if not available_models:
+        st.warning("Train a model first.")
+        return
 
-            # Interpretation
-            st.info(f"""
-            Interpretation:
-            - Model estimates a **{prob*100:.1f}% probability** that this transaction is fraudulent.
-            - High values of transaction amount, login attempts, or international transactions typically increase risk.
-            """)
+    model_choice = st.selectbox("Select Model", list(available_models.keys()))
+    model = available_models[model_choice]
 
+    numeric_features = [
+        c for c in df.columns
+        if c != "Is_Fraud" and pd.api.types.is_numeric_dtype(df[c])
+    ]
 
-# ---------------------------------------------------
-# MODULE 8: BUSINESS DASHBOARD
-# ---------------------------------------------------
-elif choice == "8. Business Dashboard":
+    inputs = {}
+    cols = st.columns(2)
 
-    if st.session_state.model is None:
-        st.warning("Train model first")
+    for i, col in enumerate(numeric_features):
+        inputs[col] = cols[i % 2].number_input(col, float(df[col].median()))
+
+    if st.button("Analyze Fraud Risk"):
+        Xnew = pd.DataFrame([inputs])
+        Xnew = auto_encode_features(Xnew)
+
+        for col in model.feature_names_in_:
+            if col not in Xnew.columns:
+                Xnew[col] = 0
+        Xnew = Xnew[model.feature_names_in_]
+
+        prob = model.predict_proba(Xnew)[0][1] * 100
+
+        fig = go.Figure(go.Indicator(
+            mode="gauge+number",
+            value=prob,
+            gauge={'axis': {'range':[0,100]}}
+        ))
+
+        st.plotly_chart(fig, use_container_width=True)
+
+        if prob < 30:
+            st.success("Low Risk Transaction")
+        elif prob < 60:
+            st.warning("Medium Risk Transaction")
+        else:
+            st.error("High Fraud Risk")
+
+# ======================================================
+# About Page
+# ======================================================
+def about_page():
+    st.subheader("About")
+    st.write("""
+Fraud Detection Dashboard built using:
+- Machine Learning
+- Streamlit
+- Data Visualization
+- Risk Scoring
+""")
+
+# ======================================================
+# Main
+# ======================================================
+def main():
+    apply_css()
+
+    st.markdown("""
+    <div class="hero">
+        <h1>Fraud Detection Dashboard</h1>
+        <p>Machine Learning powered fraud risk analysis</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    uploaded_file = st.sidebar.file_uploader("Upload dataset", type=["csv"])
+    df = load_dataset(uploaded_file)
+
+    if df is None:
+        st.info("Upload dataset to continue.")
+        return
+
+    page = st.sidebar.radio(
+        "Navigation",
+        ["Overview","Full EDA","Model Training","Risk Predictor","About"]
+    )
+
+    if page == "Overview":
+        overview_page(df)
+    elif page == "Full EDA":
+        eda_page(df)
+    elif page == "Model Training":
+        modeling_page(df)
+    elif page == "Risk Predictor":
+        risk_predictor_page(df)
     else:
-        st.header("Executive Dashboard")
+        about_page()
 
-        y_test = st.session_state.y_test
-        X_test = st.session_state.X_test
-        model = st.session_state.model
-
-        probs = model.predict_proba(X_test)[:, 1]
-        preds = (probs > 0.5).astype(int)
-
-        cm = confusion_matrix(y_test, preds)
-
-        tp = cm[1,1]
-        fn = cm[1,0]
-        fp = cm[0,1]
-
-        avg_loss = 1200
-        review_cost = 50
-
-        savings = tp * avg_loss
-        risk = fn * avg_loss
-        ops = fp * review_cost
-
-        col1, col2, col3 = st.columns(3)
-        col1.metric("Fraud Caught", tp)
-        col2.metric("Loss Prevented", f"${savings}")
-        col3.metric("Operational Cost", f"${ops}")
-
-        df_plot = pd.DataFrame({
-            "Metric": ["Saved", "Risk", "Ops Cost"],
-            "Value": [savings, risk, ops]
-        })
-
-        fig = px.bar(df_plot, x="Metric", y="Value")
-        st.plotly_chart(fig)
+if __name__ == "__main__":
+    main()
