@@ -257,11 +257,35 @@ def modeling_page(df):
         if y_train.value_counts().min() < 2:
             st.error("Not enough fraud samples to apply SMOTE. Please select more features or use full dataset.")
         return
-        # ================= SMOTE =================
-        smote = SMOTE(random_state=42)
-        X_train, y_train = smote.fit_resample(X_train, y_train)
-        st.success("SMOTE applied to balance dataset")
+# ================= SMOTE =================
         st.write("Applying SMOTE...")
+
+# Show class distribution before SMOTE
+        st.write("Class distribution before SMOTE:")
+        st.write(y_train.value_counts())
+
+# Ensure clean numeric data
+        X_train = X_train.fillna(0)
+        X_test = X_test.fillna(0)
+
+# Count minority samples
+        minority_count = y_train.value_counts().min()
+
+        if minority_count < 2:
+            st.error("Not enough fraud samples to apply SMOTE.")
+        return
+
+# Adjust neighbors safely
+        k_neighbors = min(5, minority_count - 1)
+
+        smote = SMOTE(random_state=42, k_neighbors=k_neighbors)
+        X_train, y_train = smote.fit_resample(X_train, y_train)
+
+        st.success("SMOTE completed successfully")
+
+# Show distribution after SMOTE
+        st.write("Class distribution after SMOTE:")
+        st.write(y_train.value_counts())
         models = {
             "Logistic Regression": LogisticRegression(max_iter=2000),
             "Random Forest": RandomForestClassifier(n_estimators=200)
