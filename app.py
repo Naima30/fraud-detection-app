@@ -247,26 +247,24 @@ def modeling_page(df):
             X, y, test_size=0.2, random_state=42
         )
         st.write("Train/Test split done")
-# Ensure numeric and clean data before SMOTE
-        X_train = X_train.select_dtypes(include=[np.number])
-        X_test = X_test.select_dtypes(include=[np.number])
 
-# Fill missing values (SMOTE cannot handle NaNs)
-        X_train = X_train.fillna(X_train.median())
-        X_test = X_test.fillna(X_test.median())
-        if y_train.value_counts().min() < 2:
-            st.error("Not enough fraud samples to apply SMOTE. Please select more features or use full dataset.")
-        return
 # ================= SMOTE =================
         st.write("Applying SMOTE...")
+
+# Encode categorical columns first
+        X_train = pd.get_dummies(X_train, drop_first=True)
+        X_test = pd.get_dummies(X_test, drop_first=True)
+
+# Align columns
+        X_test = X_test.reindex(columns=X_train.columns, fill_value=0)
+
+# Fill missing values
+        X_train = X_train.fillna(0)
+        X_test = X_test.fillna(0)
 
 # Show class distribution before SMOTE
         st.write("Class distribution before SMOTE:")
         st.write(y_train.value_counts())
-
-# Ensure clean numeric data
-        X_train = X_train.fillna(0)
-        X_test = X_test.fillna(0)
 
 # Count minority samples
         minority_count = y_train.value_counts().min()
@@ -282,6 +280,10 @@ def modeling_page(df):
         X_train, y_train = smote.fit_resample(X_train, y_train)
 
         st.success("SMOTE completed successfully")
+
+# Show distribution after SMOTE
+        st.write("Class distribution after SMOTE:")
+        st.write(y_train.value_counts())
 
 # Show distribution after SMOTE
         st.write("Class distribution after SMOTE:")
