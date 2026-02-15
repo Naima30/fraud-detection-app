@@ -227,6 +227,7 @@ def modeling_page(df):
         return
 
     if st.button("Train Models"):
+        st.write("Training started...")
 
         X, y = prepare_features(df[features + ["Is_Fraud"]])
         # Ensure all features are numeric
