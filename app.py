@@ -230,6 +230,7 @@ def modeling_page(df):
         st.write("Training started...")
 
         X, y = prepare_features(df[features + ["Is_Fraud"]])
+        st.write("Features prepared:", X.shape)
         # Ensure all features are numeric
         X = pd.get_dummies(X, drop_first=True)
 
@@ -245,6 +246,7 @@ def modeling_page(df):
         X_train, X_test, y_train, y_test = train_test_split(
             X, y, test_size=0.2, random_state=42
         )
+        st.write("Train/Test split done")
 # Ensure numeric and clean data before SMOTE
         X_train = X_train.select_dtypes(include=[np.number])
         X_test = X_test.select_dtypes(include=[np.number])
@@ -259,7 +261,7 @@ def modeling_page(df):
         smote = SMOTE(random_state=42)
         X_train, y_train = smote.fit_resample(X_train, y_train)
         st.success("SMOTE applied to balance dataset")
-
+        st.write("Applying SMOTE...")
         models = {
             "Logistic Regression": LogisticRegression(max_iter=2000),
             "Random Forest": RandomForestClassifier(n_estimators=200)
