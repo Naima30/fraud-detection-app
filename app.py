@@ -151,7 +151,7 @@ def eda_page(df):
 
         st.markdown('</div>', unsafe_allow_html=True)
 
-    # Bar Chart
+# Bar Chart
 st.markdown('<div class="card">', unsafe_allow_html=True)
 st.subheader("Bar Chart")
 
@@ -176,18 +176,19 @@ else:
 
 st.markdown('</div>', unsafe_allow_html=True)
 
-    # Pie Chart
-    if cat_cols:
-        st.markdown('<div class="card">', unsafe_allow_html=True)
-        st.subheader("Pie Chart")
 
-        cat2 = st.selectbox("Pie Feature", cat_cols, key="pie")
-        fig, ax = plt.subplots()
-        df[cat2].value_counts().head(6).plot.pie(autopct="%1.1f%%", ax=ax)
-        ax.set_ylabel("")
-        st.pyplot(fig)
+# Pie Chart  ← FIXED (no extra indentation)
+if cat_cols:
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.subheader("Pie Chart")
 
-        st.markdown('</div>', unsafe_allow_html=True)
+    cat2 = st.selectbox("Pie Feature", cat_cols, key="pie")
+    fig, ax = plt.subplots()
+    df[cat2].value_counts().head(6).plot.pie(autopct="%1.1f%%", ax=ax)
+    ax.set_ylabel("")
+    st.pyplot(fig)
+
+    st.markdown('</div>', unsafe_allow_html=True)
 
     # Heatmap
     if len(numeric_cols) >= 2:
