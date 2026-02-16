@@ -345,7 +345,8 @@ def modeling_page(df):
 # ======================================================
 def risk_predictor_page(df):
     st.subheader("Fraud Risk Predictor")
-
+    st.write("Input sent to model:")
+    st.write(Xnew)
     available_models = {
         k.replace("model_",""): st.session_state[k]
         for k in st.session_state if k.startswith("model_")
