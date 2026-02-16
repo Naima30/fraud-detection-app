@@ -361,17 +361,42 @@ def risk_predictor_page(df):
         st.warning("Train a model first.")
         return
 
-    numeric_features = st.session_state["feature_columns"]
+    numeric_features = [
+    c for c in df.columns
+    if c != "Is_Fraud" and pd.api.types.is_numeric_dtype(df[c])
+    ]
     inputs = {}
     cols = st.columns(2)
 
     for i, col in enumerate(numeric_features):
+
+    # Skip columns that no longer exist in dataframe
+        if col not in df.columns:
+            continue
+
+        default_val = df[col].median() if pd.api.types.is_numeric_dtype(df[col]) else 0
+
         if col == "Account_Age_Days":
-            inputs[col] = cols[i % 2].number_input(col, min_value=0.0, max_value=5000.0, value=365.0)
+            inputs[col] = cols[i % 2].number_input(
+                col,
+                min_value=0.0,
+                max_value=5000.0,
+                value=float(default_val if not np.isnan(default_val) else 365.0)
+        )
+
         elif col == "Customer_Age":
-            inputs[col] = cols[i % 2].number_input(col, min_value=18.0, max_value=100.0, value=30.0)
+            inputs[col] = cols[i % 2].number_input(
+                col,
+                min_value=18.0,
+                max_value=100.0,
+                value=float(default_val if not np.isnan(default_val) else 30.0)
+            )
+
         else:
-            inputs[col] = cols[i % 2].number_input(col, value=float(df[col].median()))
+            inputs[col] = cols[i % 2].number_input(
+                col,
+                value=float(default_val if not np.isnan(default_val) else 0.0)
+        )
 
     if st.button("Analyze Fraud Risk"):
 
