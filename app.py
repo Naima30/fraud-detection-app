@@ -287,7 +287,7 @@ def modeling_page(df):
 # Show distribution after SMOTE
         st.write("Class distribution after SMOTE:")
         st.write(y_train.value_counts())
-
+        st.session_state["feature_columns"] = X_train.columns
         models = {
             "Logistic Regression": LogisticRegression(max_iter=2000),
             "Random Forest": RandomForestClassifier(n_estimators=200)
@@ -345,8 +345,6 @@ def modeling_page(df):
 # ======================================================
 def risk_predictor_page(df):
     st.subheader("Fraud Risk Predictor")
-    st.write("Input sent to model:")
-    st.write(Xnew)
     available_models = {
         k.replace("model_",""): st.session_state[k]
         for k in st.session_state if k.startswith("model_")
@@ -375,29 +373,43 @@ def risk_predictor_page(df):
             inputs[col] = cols[i % 2].number_input(col, value=float(df[col].median()))
 
     if st.button("Analyze Fraud Risk"):
-        Xnew = pd.DataFrame([inputs])
-        Xnew = auto_encode_features(Xnew)
 
-        for col in model.feature_names_in_:
-            if col not in Xnew.columns:
-                Xnew[col] = 0
-        Xnew = Xnew[model.feature_names_in_]
+    # Create input dataframe
+     Xnew = pd.DataFrame([inputs])
 
-        prob = model.predict_proba(Xnew)[0][1] * 100
+    # Encode categorical variables
+    Xnew = pd.get_dummies(Xnew, drop_first=True)
 
-        fig = go.Figure(go.Indicator(
-            mode="gauge+number",
-            value=prob,
-            gauge={'axis': {'range':[0,100]}}
-        ))
-        st.plotly_chart(fig, use_container_width=True)
+    # Ensure same columns as training
+    if "feature_columns" in st.session_state:
+        feature_cols = st.session_state["feature_columns"]
+        Xnew = Xnew.reindex(columns=feature_cols, fill_value=0)
+    else:
+        # fallback if feature_columns not saved
+        Xnew = Xnew.reindex(columns=model.feature_names_in_, fill_value=0)
 
-        if prob < 30:
-            st.success("Low Risk Transaction")
-        elif prob < 60:
-            st.warning("Medium Risk Transaction")
-        else:
-            st.error("High Fraud Risk")
+    # Debug view (optional but useful)
+    st.write("Model input preview:")
+    st.dataframe(Xnew.head())
+
+    # Prediction
+    prob = model.predict_proba(Xnew)[0][1] * 100
+
+    # Gauge chart
+    fig = go.Figure(go.Indicator(
+        mode="gauge+number",
+        value=prob,
+        gauge={'axis': {'range':[0,100]}}
+    ))
+    st.plotly_chart(fig, use_container_width=True)
+
+    # Risk label
+    if prob < 30:
+        st.success("Low Risk Transaction")
+    elif prob < 60:
+        st.warning("Medium Risk Transaction")
+    else:
+        st.error("High Fraud Risk")
 
         # ================= LIME =================
         if "X_train" in st.session_state:
