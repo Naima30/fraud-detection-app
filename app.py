@@ -201,7 +201,7 @@ def prepare_features(df, target="Is_Fraud"):
 
     df = df.drop(columns=drop_cols)
 
-    X = df.drop(target, axis=1)
+    X = df.drop("Is_Fraud", axis=1)
     y = df[target]
 
     X = pd.get_dummies(X, drop_first=True)
