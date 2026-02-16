@@ -219,9 +219,9 @@ def modeling_page(df):
         return
 
     features = st.multiselect(
-        "Select Features",
-        [c for c in df.columns if c != "Is_Fraud"],
-        default=[c for c in df.columns if c != "Is_Fraud"][:5]
+    "Select Features",
+    [c for c in df.columns if c != "Is_Fraud"],
+    default=[c for c in df.columns if c != "Is_Fraud"]
     )
 
     if not features:
@@ -357,10 +357,11 @@ def risk_predictor_page(df):
     model_choice = st.selectbox("Select Model", list(available_models.keys()))
     model = available_models[model_choice]
 
-    numeric_features = [
-        c for c in df.columns
-        if c != "Is_Fraud" and pd.api.types.is_numeric_dtype(df[c])
-    ]
+    if "feature_columns" not in st.session_state:
+        st.warning("Train a model first.")
+        return
+
+    numeric_features = st.session_state["feature_columns"]
     inputs = {}
     cols = st.columns(2)
 
