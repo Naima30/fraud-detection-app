@@ -374,42 +374,34 @@ def risk_predictor_page(df):
 
     if st.button("Analyze Fraud Risk"):
 
-    # Create input dataframe
-     Xnew = pd.DataFrame([inputs])
+    # Create dataframe from inputs
+        Xnew = pd.DataFrame([inputs])
 
     # Encode categorical variables
-    Xnew = pd.get_dummies(Xnew, drop_first=True)
+        Xnew = pd.get_dummies(Xnew, drop_first=True)
 
-    # Ensure same columns as training
-    if "feature_columns" in st.session_state:
+    # Align with training columns
         feature_cols = st.session_state["feature_columns"]
         Xnew = Xnew.reindex(columns=feature_cols, fill_value=0)
-    else:
-        # fallback if feature_columns not saved
-        Xnew = Xnew.reindex(columns=model.feature_names_in_, fill_value=0)
 
-    # Debug view (optional but useful)
-    st.write("Model input preview:")
-    st.dataframe(Xnew.head())
-
-    # Prediction
-    prob = model.predict_proba(Xnew)[0][1] * 100
+    # Predict
+        prob = model.predict_proba(Xnew)[0][1] * 100
 
     # Gauge chart
-    fig = go.Figure(go.Indicator(
-        mode="gauge+number",
-        value=prob,
-        gauge={'axis': {'range':[0,100]}}
-    ))
-    st.plotly_chart(fig, use_container_width=True)
+        fig = go.Figure(go.Indicator(
+            mode="gauge+number",
+            value=prob,
+            gauge={'axis': {'range':[0,100]}}
+        ))
+        st.plotly_chart(fig, use_container_width=True)
 
-    # Risk label
-    if prob < 30:
-        st.success("Low Risk Transaction")
-    elif prob < 60:
-        st.warning("Medium Risk Transaction")
-    else:
-        st.error("High Fraud Risk")
+    # Risk message
+        if prob < 30:
+            st.success("Low Risk Transaction")
+        elif prob < 60:
+            st.warning("Medium Risk Transaction")
+        else:
+         st.error("High Fraud Risk")
 
         # ================= LIME =================
         if "X_train" in st.session_state:
